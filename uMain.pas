@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, FileCtrl, ComCtrls;
+  Dialogs, StdCtrls, FileCtrl, ComCtrls, ExtCtrls, Spin, ShellAPI;
 
 type
   TfmMain = class(TForm)
@@ -12,12 +12,41 @@ type
     lbFile: TFileListBox;
     lbDir: TDirectoryListBox;
     cmbDrive: TDriveComboBox;
+    lbResult: TListBox;
+    pnlMain: TPanel;
+    pnlLeft: TPanel;
+    pnlResult: TPanel;
+    pnlRight: TPanel;
+    pnlSettings: TPanel;
+    rgRenameType: TRadioGroup;
+    edMask: TEdit;
+    lblMask: TLabel;
+    edExts: TEdit;
+    lblExts: TLabel;
+    cmbMaskAdd: TComboBox;
+    sedZeroCnt: TSpinEdit;
+    cmbExts: TComboBox;
     procedure lbFileKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure ShowSelected;
+    procedure lbFileClick(Sender: TObject);
+    procedure cmbMaskAddClick(Sender: TObject);
+    procedure sedZeroCntChange(Sender: TObject);
+    procedure edMaskChange(Sender: TObject);
+    procedure edExtsChange(Sender: TObject);
+    procedure cmbExtsClick(Sender: TObject);
+    function DoMask(const src: string; index: integer): string;
+    procedure FormCreate(Sender: TObject);
+    procedure Init;
   private
-    btnCrtl: boolean;
+    mskZeroCnt: integer;
+    mskText, mskExts: string;
+    function MulStr(Input: string; Rep: integer): string;
+    function AddZeros(index, iCnt: integer): string;
+    function DelSomeStr(const sourceStr, delStr: string; mode: integer = 1): string;
+    function CheckExt(const Ext: string): boolean;
   public
-    { Public declarations }
+
   end;
 
 var
@@ -27,11 +56,163 @@ implementation
 
 {$R *.dfm}
 
+function TfmMain.AddZeros(index, iCnt: integer): string;
+var
+  n: integer;
+begin
+  Result:= '';
+  if Length(inttostr(index)) >= iCnt then
+    Result:= inttostr(index)
+  else
+    Result:= MulStr('0', iCnt - Length(inttostr(index))) + inttostr(index)
+end;
+
+function TfmMain.CheckExt(const Ext: string): boolean;
+begin
+  if pos(Ext, mskExts) > 0 then
+    Result:= true
+  else
+    Result:= false;
+end;
+
+procedure TfmMain.cmbExtsClick(Sender: TObject);
+begin
+  edExts.SelText:= cmbExts.Text + ';';
+end;
+
+procedure TfmMain.cmbMaskAddClick(Sender: TObject);
+begin
+  edMask.SelText:= cmbMaskAdd.Text;
+end;
+
+function TfmMain.DelSomeStr(const sourceStr, delStr: string;
+  mode: integer): string;
+begin
+  case mode of
+    1:begin
+      result:= stringreplace(sourceStr, delStr, '', [rfIgnoreCase]);
+    end;
+    2:begin
+      result:= stringreplace(sourceStr, delStr, '', [rfReplaceAll, rfIgnoreCase]);
+    end;
+    else
+      result:= stringreplace(sourceStr, delStr, '', [rfIgnoreCase]);
+  end;
+end;
+
+function TfmMain.DoMask(const src: string; index: integer): string;
+var
+  res: string;
+begin
+  Result:= '';
+  if src = '' then Exit;
+  if mskText = '' then
+  begin
+    Result:= src;
+    Exit;
+  end;
+  res:= mskText;
+  if pos('[C]', mskText) > 0 then
+  begin
+    res:= StringReplace(res, '[C]', AddZeros(index + 1, mskZeroCnt), [rfReplaceAll]);
+  end;
+  if pos('[NAME]', res) > 0 then
+  begin
+    res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
+  end;
+  if pos('[RANDOM]', res) > 0 then
+  begin
+    Randomize;
+    res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
+  end;
+  res:= res + ExtractFileExt(src);
+  Result:= res;
+end;
+
+procedure TfmMain.edExtsChange(Sender: TObject);
+begin
+  mskExts:= edExts.Text;
+  ShowSelected;
+end;
+
+procedure TfmMain.edMaskChange(Sender: TObject);
+begin
+  mskText:= edMask.Text;
+  ShowSelected;
+end;
+
+procedure TfmMain.FormCreate(Sender: TObject);
+begin
+  Init;
+end;
+
+procedure TfmMain.Init;
+begin
+  edMask.OnChange(self);
+  edMask.SelStart:= edMask.GetTextLen;
+end;
+
+procedure TfmMain.lbFileClick(Sender: TObject);
+begin
+  ShowSelected;
+end;
+
 procedure TfmMain.lbFileKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if (ssCtrl in Shift) and (Key = 65) then
-    FileListBox1.SelectAll;
+    lbFile.SelectAll;
+  ShowSelected;
+end;
+
+function TfmMain.MulStr(Input: string; Rep: integer): string;
+var
+  i: integer;
+begin
+  for i := 0 to Rep - 1 do
+    result := result + Input;
+end;
+
+procedure TfmMain.ShowSelected;
+var
+  I, n: Integer;
+begin
+  lbResult.Items.BeginUpdate;
+  cmbExts.Items.BeginUpdate;
+  lbResult.Clear;
+  cmbExts.Clear;
+  n:= 0;
+  for I := 0 to lbFile.Count - 1 do
+  begin
+    if lbFile.Selected[I] then
+    begin
+      if mskExts <> '' then
+      begin
+        if CheckExt(ExtractFileExt(lbFile.Items.Strings[I])) then
+        begin
+          lbResult.Items.Add(DoMask(lbFile.Items.Strings[I], n));
+          inc(n);
+        end;
+      end
+      else
+      begin
+        lbResult.Items.Add(DoMask(lbFile.Items.Strings[I], n));
+        inc(n);
+      end;
+      if (cmbExts.Items.IndexOf(ExtractFileExt(lbFile.Items.Strings[I])) >= 0) or (pos(ExtractFileExt(lbFile.Items.Strings[I]), mskExts) > 0) then
+        Continue;
+      cmbExts.Items.Add(ExtractFileExt(lbFile.Items.Strings[I]));
+    end;
+  end;
+  cmbExts.ItemIndex:= 0;
+  cmbExts.Items.EndUpdate;;
+  lbResult.Items.EndUpdate;
+end;
+
+procedure TfmMain.sedZeroCntChange(Sender: TObject);
+begin
+  mskZeroCnt:= sedZeroCnt.Value;
+  ShowSelected;
 end;
 
 end.
