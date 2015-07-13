@@ -23,7 +23,6 @@ object fmMain: TfmMain
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitTop = -6
     object pnlLeft: TPanel
       Left = 0
       Top = 0
@@ -32,7 +31,6 @@ object fmMain: TfmMain
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
-      ExplicitHeight = 498
       object cmbDrive: TDriveComboBox
         Left = 0
         Top = 0
@@ -41,8 +39,6 @@ object fmMain: TfmMain
         Align = alTop
         DirList = lbDir
         TabOrder = 0
-        ExplicitLeft = -40
-        ExplicitTop = 86
       end
       object lbDir: TDirectoryListBox
         Left = 0
@@ -53,8 +49,6 @@ object fmMain: TfmMain
         FileList = lbFile
         ItemHeight = 16
         TabOrder = 1
-        ExplicitLeft = -24
-        ExplicitTop = 120
       end
       object lbFile: TFileListBox
         Left = 0
@@ -77,9 +71,6 @@ object fmMain: TfmMain
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 1
-      ExplicitLeft = 0
-      ExplicitWidth = 41
-      ExplicitHeight = 714
       object pnlResult: TPanel
         Left = 0
         Top = 241
@@ -88,10 +79,6 @@ object fmMain: TfmMain
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 0
-        ExplicitLeft = -209
-        ExplicitTop = 300
-        ExplicitWidth = 250
-        ExplicitHeight = 150
         object lbResult: TListBox
           Left = 0
           Top = 0
@@ -100,8 +87,6 @@ object fmMain: TfmMain
           Align = alClient
           ItemHeight = 13
           TabOrder = 0
-          ExplicitWidth = 250
-          ExplicitHeight = 150
         end
       end
       object pnlSettings: TPanel
@@ -112,8 +97,6 @@ object fmMain: TfmMain
         Align = alTop
         BevelOuter = bvNone
         TabOrder = 1
-        ExplicitLeft = 6
-        ExplicitTop = -6
         object lblMask: TLabel
           Left = 6
           Top = 36
@@ -182,6 +165,7 @@ object fmMain: TfmMain
           TabOrder = 1
           Text = '[C] - [NAME]'
           OnChange = edMaskChange
+          OnKeyPress = edMaskKeyPress
         end
         object edExts: TEdit
           Left = 183
@@ -296,8 +280,5 @@ object fmMain: TfmMain
     Width = 714
     Height = 19
     Panels = <>
-    ExplicitLeft = 1
-    ExplicitTop = 465
-    ExplicitWidth = 710
   end
 end

@@ -58,6 +58,7 @@ type
     procedure Init;
     procedure rgRenameTypeClick(Sender: TObject);
     procedure chbNumsClick(Sender: TObject);
+    procedure edMaskKeyPress(Sender: TObject; var Key: Char);
   private
     mskZeroCnt: integer;
     mskText, mskExts: string;
@@ -164,6 +165,12 @@ procedure TfmMain.edMaskChange(Sender: TObject);
 begin
   mskText:= edMask.Text;
   ShowSelected;
+end;
+
+procedure TfmMain.edMaskKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key in ['\', '/', ':', '*', '?', '"', '<', '>', '|'] then
+    Key:= #0;
 end;
 
 procedure TfmMain.FormCreate(Sender: TObject);
