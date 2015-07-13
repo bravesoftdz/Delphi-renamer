@@ -1,3 +1,16 @@
+{
+  Сокращения:
+  cmb - TComboBox
+  chb - TCheckBox
+  bvl - TBevel
+  btn - TButton
+  sed - TSpinEdit
+  ed - TEdit
+  lb - TListBox
+  lbl - TLabel
+  rg - TRadioGroup
+  pnl - TPanel
+}
 unit uMain;
 
 interface
@@ -26,6 +39,11 @@ type
     cmbMaskAdd: TComboBox;
     sedZeroCnt: TSpinEdit;
     cmbExts: TComboBox;
+    bvlSettings: TBevel;
+    Label1: TLabel;
+    Label2: TLabel;
+    sedStartNum: TSpinEdit;
+    chbNums: TCheckBox;
     procedure lbFileKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure ShowSelected;
@@ -38,13 +56,17 @@ type
     function DoMask(const src: string; index: integer): string;
     procedure FormCreate(Sender: TObject);
     procedure Init;
+    procedure rgRenameTypeClick(Sender: TObject);
+    procedure chbNumsClick(Sender: TObject);
   private
     mskZeroCnt: integer;
     mskText, mskExts: string;
+    rType: boolean;
     function MulStr(Input: string; Rep: integer): string;
     function AddZeros(index, iCnt: integer): string;
     function DelSomeStr(const sourceStr, delStr: string; mode: integer = 1): string;
     function CheckExt(const Ext: string): boolean;
+    procedure UpdateType;
   public
 
   end;
@@ -57,14 +79,17 @@ implementation
 {$R *.dfm}
 
 function TfmMain.AddZeros(index, iCnt: integer): string;
-var
-  n: integer;
 begin
   Result:= '';
   if Length(inttostr(index)) >= iCnt then
     Result:= inttostr(index)
   else
     Result:= MulStr('0', iCnt - Length(inttostr(index))) + inttostr(index)
+end;
+
+procedure TfmMain.chbNumsClick(Sender: TObject);
+begin
+  sedStartNum.Enabled:= not chbNums.Checked;
 end;
 
 function TfmMain.CheckExt(const Ext: string): boolean;
@@ -150,6 +175,8 @@ procedure TfmMain.Init;
 begin
   edMask.OnChange(self);
   edMask.SelStart:= edMask.GetTextLen;
+  rType:= true;
+  UpdateType;
 end;
 
 procedure TfmMain.lbFileClick(Sender: TObject);
@@ -171,6 +198,12 @@ var
 begin
   for i := 0 to Rep - 1 do
     result := result + Input;
+end;
+
+procedure TfmMain.rgRenameTypeClick(Sender: TObject);
+begin
+  rType:= (rgRenameType.ItemIndex = 0);
+  UpdateType;
 end;
 
 procedure TfmMain.ShowSelected;
@@ -207,6 +240,22 @@ begin
   cmbExts.ItemIndex:= 0;
   cmbExts.Items.EndUpdate;;
   lbResult.Items.EndUpdate;
+end;
+
+procedure TfmMain.UpdateType;
+begin
+  case rType of
+    true:
+    begin
+      sedStartNum.Enabled:= false;
+      chbNums.Enabled:= false;
+    end
+    else
+    begin
+      sedStartNum.Enabled:= true;
+      chbNums.Enabled:= true;
+    end;
+  end;
 end;
 
 procedure TfmMain.sedZeroCntChange(Sender: TObject);
