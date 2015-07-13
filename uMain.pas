@@ -67,6 +67,7 @@ type
     function AddZeros(index, iCnt: integer): string;
     function DelSomeStr(const sourceStr, delStr: string; mode: integer = 1): string;
     function CheckExt(const Ext: string): boolean;
+    function CheckMask(const Mask: string): boolean;
     procedure UpdateType;
   public
 
@@ -79,6 +80,8 @@ implementation
 
 {$R *.dfm}
 
+// Добавляем ведущие нули к нумерации
+
 function TfmMain.AddZeros(index, iCnt: integer): string;
 begin
   Result:= '';
@@ -88,10 +91,14 @@ begin
     Result:= MulStr('0', iCnt - Length(inttostr(index))) + inttostr(index)
 end;
 
+// Выключаем возможность выбора стартовой позиции при включеном флажке
+
 procedure TfmMain.chbNumsClick(Sender: TObject);
 begin
   sedStartNum.Enabled:= not chbNums.Checked;
 end;
+
+// Проверка на присутствие расширения в списке
 
 function TfmMain.CheckExt(const Ext: string): boolean;
 begin
@@ -101,15 +108,30 @@ begin
     Result:= false;
 end;
 
+// Проверка коректности маски (иначе все имена буду одинаковые, что невозможно)
+
+function TfmMain.CheckMask(const Mask: string): boolean;
+begin
+  Result:= false;
+  if (pos('[C]', Mask) > 0) or (Pos('[NAME]', Mask) > 0) then
+    Result:= true;
+end;
+
+// Добавляем расширение в набор
+
 procedure TfmMain.cmbExtsClick(Sender: TObject);
 begin
   edExts.SelText:= cmbExts.Text + ';';
 end;
 
+// Добавляем маску
+
 procedure TfmMain.cmbMaskAddClick(Sender: TObject);
 begin
   edMask.SelText:= cmbMaskAdd.Text;
 end;
+
+// Обертка для удаления подстроки
 
 function TfmMain.DelSomeStr(const sourceStr, delStr: string;
   mode: integer): string;
@@ -125,6 +147,8 @@ begin
       result:= stringreplace(sourceStr, delStr, '', [rfIgnoreCase]);
   end;
 end;
+
+// Применеие маски к имени файла согласно настройкам
 
 function TfmMain.DoMask(const src: string; index: integer): string;
 var
@@ -155,11 +179,15 @@ begin
   Result:= res;
 end;
 
+// Изменение списка включенных расширений (обновим список)
+
 procedure TfmMain.edExtsChange(Sender: TObject);
 begin
   mskExts:= edExts.Text;
   ShowSelected;
 end;
+
+// Изменение маски (обновление списка)
 
 procedure TfmMain.edMaskChange(Sender: TObject);
 begin
@@ -167,16 +195,22 @@ begin
   ShowSelected;
 end;
 
+// Блокируем ввод некоректных символов в названии
+
 procedure TfmMain.edMaskKeyPress(Sender: TObject; var Key: Char);
 begin
   if Key in ['\', '/', ':', '*', '?', '"', '<', '>', '|'] then
     Key:= #0;
 end;
 
+// При создании проводим инициализацию необходимых переменных
+
 procedure TfmMain.FormCreate(Sender: TObject);
 begin
   Init;
 end;
+
+// Инициализация необходимых переменных
 
 procedure TfmMain.Init;
 begin
@@ -186,18 +220,24 @@ begin
   UpdateType;
 end;
 
+// При клике обновим список
+
 procedure TfmMain.lbFileClick(Sender: TObject);
 begin
   ShowSelected;
 end;
 
+// При Ctrl+A выбираем все файлы и обновляем список
+
 procedure TfmMain.lbFileKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (ssCtrl in Shift) and (Key = 65) then
+  if (ssCtrl in Shift) and (Key = ord('A')) then
     lbFile.SelectAll;
   ShowSelected;
 end;
+
+// Размножение строки
 
 function TfmMain.MulStr(Input: string; Rep: integer): string;
 var
@@ -207,11 +247,15 @@ begin
     result := result + Input;
 end;
 
+// При изменении типа нумерации обновим переменные
+
 procedure TfmMain.rgRenameTypeClick(Sender: TObject);
 begin
   rType:= (rgRenameType.ItemIndex = 0);
   UpdateType;
 end;
+
+// Отображение примененного фильтра
 
 procedure TfmMain.ShowSelected;
 var
@@ -245,9 +289,15 @@ begin
     end;
   end;
   cmbExts.ItemIndex:= 0;
+  if not CheckMask(edMask.Text) then
+    lbResult.Color:= clRed
+  else
+    lbResult.Color:= clWhite;
   cmbExts.Items.EndUpdate;;
   lbResult.Items.EndUpdate;
 end;
+
+// Обновление интерфейса при изменениии типа нумерации
 
 procedure TfmMain.UpdateType;
 begin
@@ -264,6 +314,8 @@ begin
     end;
   end;
 end;
+
+// Изменение количества ведущих нулей
 
 procedure TfmMain.sedZeroCntChange(Sender: TObject);
 begin
