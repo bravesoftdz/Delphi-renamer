@@ -40,10 +40,11 @@ type
     sedZeroCnt: TSpinEdit;
     cmbExts: TComboBox;
     bvlSettings: TBevel;
-    Label1: TLabel;
-    Label2: TLabel;
+    lblSimple: TLabel;
+    lblNum: TLabel;
     sedStartNum: TSpinEdit;
     chbNums: TCheckBox;
+    btnRename: TButton;
     procedure lbFileKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure ShowSelected;
@@ -59,16 +60,20 @@ type
     procedure rgRenameTypeClick(Sender: TObject);
     procedure chbNumsClick(Sender: TObject);
     procedure edMaskKeyPress(Sender: TObject; var Key: Char);
+    procedure btnRenameClick(Sender: TObject);
+    procedure Rename;
   private
     mskZeroCnt: integer;
     mskText, mskExts: string;
-    rType: boolean;
+    rType, nAll: boolean;
     function MulStr(Input: string; Rep: integer): string;
     function AddZeros(index, iCnt: integer): string;
     function DelSomeStr(const sourceStr, delStr: string; mode: integer = 1): string;
     function CheckExt(const Ext: string): boolean;
     function CheckMask(const Mask: string): boolean;
     procedure UpdateType;
+    function GetNumberStr(const src: string; const start: integer): string;
+    function GetAllNumberStr(const src: string): string;
   public
 
   end;
@@ -79,6 +84,44 @@ var
 implementation
 
 {$R *.dfm}
+
+// Вытягиваем из строки число
+
+function TfmMain.GetAllNumberStr(const src: string): string;
+var
+  n, len: integer;
+begin
+  Result:= '';
+  n:= 0;
+  while n <= len do
+  begin
+    if src[n] in ['0'..'9'] then
+    begin
+      Result:= Result + src[n];
+      inc(n);
+    end;
+  end;
+end;
+
+// Выбираем число по позиции (если следующий символ не число, прекращаем цикл)
+
+function TfmMain.GetNumberStr(const src: string; const start: integer): string;
+var
+  n, len: integer;
+begin
+  Result:= '';
+  n:= start;
+  while n < len do
+  begin
+    if src[n] in ['0'..'9'] then
+    begin
+      Result:= Result + src[n];
+      inc(n);
+    end
+    else
+      n:= len;
+  end;
+end;
 
 // Добавляем ведущие нули к нумерации
 
@@ -91,11 +134,19 @@ begin
     Result:= MulStr('0', iCnt - Length(inttostr(index))) + inttostr(index)
 end;
 
+// Переименование файлов
+
+procedure TfmMain.btnRenameClick(Sender: TObject);
+begin
+ Rename;
+end;
+
 // Выключаем возможность выбора стартовой позиции при включеном флажке
 
 procedure TfmMain.chbNumsClick(Sender: TObject);
 begin
   sedStartNum.Enabled:= not chbNums.Checked;
+  nAll:= chbNums.Checked;
 end;
 
 // Проверка на присутствие расширения в списке
@@ -152,7 +203,8 @@ end;
 
 function TfmMain.DoMask(const src: string; index: integer): string;
 var
-  res: string;
+  res, num: string;
+  num_i: integer;
 begin
   Result:= '';
   if src = '' then Exit;
@@ -162,18 +214,72 @@ begin
     Exit;
   end;
   res:= mskText;
-  if pos('[C]', mskText) > 0 then
-  begin
-    res:= StringReplace(res, '[C]', AddZeros(index + 1, mskZeroCnt), [rfReplaceAll]);
-  end;
-  if pos('[NAME]', res) > 0 then
-  begin
-    res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
-  end;
-  if pos('[RANDOM]', res) > 0 then
-  begin
-    Randomize;
-    res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
+  case rType of
+    true:begin
+      if pos('[C]', mskText) > 0 then
+      begin
+        res:= StringReplace(res, '[C]', AddZeros(index + 1, mskZeroCnt), [rfReplaceAll]);
+      end;
+      if pos('[NAME]', res) > 0 then
+      begin
+        res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
+      end;
+      if pos('[RANDOM]', res) > 0 then
+      begin
+        Randomize;
+        res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
+      end;
+    end
+    else
+    begin
+      case nAll of
+        true:begin
+          num:= GetAllNumberStr(src);
+          try
+            num_i:= strtoint(num);
+          except
+            num_i:= 0;
+          end;
+          if pos('[C]', mskText) > 0 then
+          begin
+            res:= StringReplace(res, '[C]', AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+          end;
+          if pos('[NAME]', res) > 0 then
+          begin
+            res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
+            res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+          end;
+          if pos('[RANDOM]', res) > 0 then
+          begin
+            Randomize;
+            res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
+          end;
+        end
+        else
+        begin
+          num:= GetNumberStr(src, sedStartNum.Value);
+          try
+            num_i:= strtoint(num);
+          except
+            num_i:= 0;
+          end;
+          if pos('[C]', mskText) > 0 then
+          begin
+            res:= StringReplace(res, '[C]', AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+          end;
+          if pos('[NAME]', res) > 0 then
+          begin
+            res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
+            res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+          end;
+          if pos('[RANDOM]', res) > 0 then
+          begin
+            Randomize;
+            res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
+          end;
+        end;
+      end;
+    end;
   end;
   res:= res + ExtractFileExt(src);
   Result:= res;
@@ -217,6 +323,7 @@ begin
   edMask.OnChange(self);
   edMask.SelStart:= edMask.GetTextLen;
   rType:= true;
+  nAll:= false;
   UpdateType;
 end;
 
@@ -245,6 +352,20 @@ var
 begin
   for i := 0 to Rep - 1 do
     result := result + Input;
+end;
+
+procedure TfmMain.Rename;
+var
+  cnt, i: integer;
+begin
+  cnt:= lbResult.Count;
+  for i := 0 to cnt - 1 do
+  begin
+    if lbFile.Selected[i] then
+    begin
+      ShowMessage(lbDir.Directory + '\' + lbFile.Items.Strings[i]);
+    end;
+  end;
 end;
 
 // При изменении типа нумерации обновим переменные
@@ -295,6 +416,7 @@ begin
     lbResult.Color:= clWhite;
   cmbExts.Items.EndUpdate;;
   lbResult.Items.EndUpdate;
+  stsBar.Panels[0].Text:= 'Выбрано файлов: ' + inttostr(lbResult.Count);
 end;
 
 // Обновление интерфейса при изменениии типа нумерации

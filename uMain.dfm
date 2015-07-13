@@ -73,27 +73,30 @@ object fmMain: TfmMain
       TabOrder = 1
       object pnlResult: TPanel
         Left = 0
-        Top = 241
+        Top = 193
         Width = 361
-        Height = 256
+        Height = 304
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 0
+        ExplicitTop = 241
+        ExplicitHeight = 256
         object lbResult: TListBox
           Left = 0
           Top = 0
           Width = 361
-          Height = 256
+          Height = 304
           Align = alClient
           ItemHeight = 13
           TabOrder = 0
+          ExplicitHeight = 256
         end
       end
       object pnlSettings: TPanel
         Left = 0
         Top = 0
         Width = 361
-        Height = 241
+        Height = 193
         Align = alTop
         BevelOuter = bvNone
         TabOrder = 1
@@ -122,14 +125,14 @@ object fmMain: TfmMain
           Margins.Bottom = 0
           Shape = bsBottomLine
         end
-        object Label1: TLabel
+        object lblSimple: TLabel
           Left = 7
           Top = 76
           Width = 160
           Height = 13
           Caption = #1044#1083#1103' '#1087#1088#1086#1089#1090#1086#1075#1086' '#1087#1077#1088#1077#1080#1084#1077#1085#1086#1074#1072#1085#1080#1103':'
         end
-        object Label2: TLabel
+        object lblNum: TLabel
           Left = 6
           Top = 118
           Width = 167
@@ -271,6 +274,29 @@ object fmMain: TfmMain
           TabOrder = 7
           OnClick = chbNumsClick
         end
+        object btnRename: TButton
+          Left = 6
+          Top = 159
+          Width = 147
+          Height = 30
+          Margins.Left = 0
+          Margins.Top = 0
+          Margins.Right = 0
+          Margins.Bottom = 0
+          BiDiMode = bdLeftToRight
+          Caption = #1055#1077#1088#1077#1080#1084#1077#1085#1086#1074#1072#1090#1100' '#1085#1072#1073#1086#1088
+          DoubleBuffered = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = [fsBold]
+          ParentBiDiMode = False
+          ParentDoubleBuffered = False
+          ParentFont = False
+          TabOrder = 8
+          OnClick = btnRenameClick
+        end
       end
     end
   end
@@ -279,6 +305,9 @@ object fmMain: TfmMain
     Top = 497
     Width = 714
     Height = 19
-    Panels = <>
+    Panels = <
+      item
+        Width = 150
+      end>
   end
 end
