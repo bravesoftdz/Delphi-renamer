@@ -1,6 +1,7 @@
 object fmMain: TfmMain
   Left = 309
   Top = 279
+  ActiveControl = btnRename
   Caption = 'Renamer v.1.0'
   ClientHeight = 516
   ClientWidth = 714
@@ -50,17 +51,20 @@ object fmMain: TfmMain
         ItemHeight = 16
         TabOrder = 1
       end
-      object lbFile: TFileListBox
+      object lbFile: TImpFileListBox
         Left = 0
         Top = 116
         Width = 353
         Height = 381
         Align = alClient
-        ItemHeight = 13
+        FileType = [ftHidden, ftSystem, ftVolumeID, ftDirectory, ftArchive, ftNormal]
+        ItemHeight = 16
         MultiSelect = True
+        ShowGlyphs = True
         TabOrder = 2
         OnClick = lbFileClick
         OnKeyDown = lbFileKeyDown
+        ExcludeRoot = True
       end
     end
     object pnlRight: TPanel
@@ -79,8 +83,6 @@ object fmMain: TfmMain
         Align = alClient
         BevelOuter = bvNone
         TabOrder = 0
-        ExplicitTop = 241
-        ExplicitHeight = 256
         object lbResult: TListBox
           Left = 0
           Top = 0
@@ -89,7 +91,6 @@ object fmMain: TfmMain
           Align = alClient
           ItemHeight = 13
           TabOrder = 0
-          ExplicitHeight = 256
         end
       end
       object pnlSettings: TPanel
@@ -166,7 +167,7 @@ object fmMain: TfmMain
           Font.Style = []
           ParentFont = False
           TabOrder = 1
-          Text = '[C] - [NAME]'
+          Text = '[C] - [N]'
           OnChange = edMaskChange
           OnKeyPress = edMaskKeyPress
         end
@@ -196,7 +197,6 @@ object fmMain: TfmMain
           Font.Name = 'Verdana'
           Font.Style = []
           ItemHeight = 14
-          ItemIndex = 0
           ParentCtl3D = False
           ParentFont = False
           TabOrder = 3
@@ -204,8 +204,8 @@ object fmMain: TfmMain
           OnClick = cmbMaskAddClick
           Items.Strings = (
             '[C]'
-            '[NAME]'
-            '[RANDOM]')
+            '[N]'
+            '[R]')
         end
         object sedZeroCnt: TSpinEdit
           Left = 92

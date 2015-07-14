@@ -17,12 +17,12 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, FileCtrl, ComCtrls, ExtCtrls, Spin, ShellAPI;
+  Dialogs, StdCtrls, FileCtrl, ComCtrls, ExtCtrls, Spin, ShellAPI,
+  ImpFileListBox;
 
 type
   TfmMain = class(TForm)
     stsBar: TStatusBar;
-    lbFile: TFileListBox;
     lbDir: TDirectoryListBox;
     cmbDrive: TDriveComboBox;
     lbResult: TListBox;
@@ -45,6 +45,7 @@ type
     sedStartNum: TSpinEdit;
     chbNums: TCheckBox;
     btnRename: TButton;
+    lbFile: TImpFileListBox;
     procedure lbFileKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure ShowSelected;
@@ -61,7 +62,7 @@ type
     procedure chbNumsClick(Sender: TObject);
     procedure edMaskKeyPress(Sender: TObject; var Key: Char);
     procedure btnRenameClick(Sender: TObject);
-    procedure Rename;
+    procedure RenameList;
   private
     mskZeroCnt: integer;
     mskText, mskExts: string;
@@ -74,6 +75,9 @@ type
     procedure UpdateType;
     function GetNumberStr(const src: string; const start: integer): string;
     function GetAllNumberStr(const src: string): string;
+    function Filter_0(const src: string; const index: integer): string;
+    function Filter_1(const src: string; const index: integer): string;
+    function Filter_2(const src: string; const index: integer): string;
   public
 
   end;
@@ -85,8 +89,13 @@ implementation
 
 {$R *.dfm}
 
-// Вытягиваем из строки число
+// Для отладки
+procedure ODS(const s: string);
+begin
+  OutputDebugString(PChar(s));
+end;
 
+// Вытягиваем из строки число
 function TfmMain.GetAllNumberStr(const src: string): string;
 var
   n, len: integer;
@@ -104,7 +113,6 @@ begin
 end;
 
 // Выбираем число по позиции (если следующий символ не число, прекращаем цикл)
-
 function TfmMain.GetNumberStr(const src: string; const start: integer): string;
 var
   n, len: integer;
@@ -124,7 +132,6 @@ begin
 end;
 
 // Добавляем ведущие нули к нумерации
-
 function TfmMain.AddZeros(index, iCnt: integer): string;
 begin
   Result:= '';
@@ -135,14 +142,12 @@ begin
 end;
 
 // Переименование файлов
-
 procedure TfmMain.btnRenameClick(Sender: TObject);
 begin
- Rename;
+  RenameList;
 end;
 
 // Выключаем возможность выбора стартовой позиции при включеном флажке
-
 procedure TfmMain.chbNumsClick(Sender: TObject);
 begin
   sedStartNum.Enabled:= not chbNums.Checked;
@@ -150,7 +155,6 @@ begin
 end;
 
 // Проверка на присутствие расширения в списке
-
 function TfmMain.CheckExt(const Ext: string): boolean;
 begin
   if pos(Ext, mskExts) > 0 then
@@ -160,30 +164,26 @@ begin
 end;
 
 // Проверка коректности маски (иначе все имена буду одинаковые, что невозможно)
-
 function TfmMain.CheckMask(const Mask: string): boolean;
 begin
   Result:= false;
-  if (pos('[C]', Mask) > 0) or (Pos('[NAME]', Mask) > 0) then
+  if (pos('[C]', Mask) > 0) or (Pos('[N]', Mask) > 0) then
     Result:= true;
 end;
 
 // Добавляем расширение в набор
-
 procedure TfmMain.cmbExtsClick(Sender: TObject);
 begin
   edExts.SelText:= cmbExts.Text + ';';
 end;
 
 // Добавляем маску
-
 procedure TfmMain.cmbMaskAddClick(Sender: TObject);
 begin
   edMask.SelText:= cmbMaskAdd.Text;
 end;
 
-// Обертка для удаления подстроки
-
+// Обертка для удаления подстроку из строки
 function TfmMain.DelSomeStr(const sourceStr, delStr: string;
   mode: integer): string;
 begin
@@ -200,7 +200,6 @@ begin
 end;
 
 // Применеие маски к имени файла согласно настройкам
-
 function TfmMain.DoMask(const src: string; index: integer): string;
 var
   res, num: string;
@@ -213,80 +212,27 @@ begin
     Result:= src;
     Exit;
   end;
-  res:= mskText;
   case rType of
     true:begin
-      if pos('[C]', mskText) > 0 then
-      begin
-        res:= StringReplace(res, '[C]', AddZeros(index + 1, mskZeroCnt), [rfReplaceAll]);
-      end;
-      if pos('[NAME]', res) > 0 then
-      begin
-        res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
-      end;
-      if pos('[RANDOM]', res) > 0 then
-      begin
-        Randomize;
-        res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
-      end;
+      res:= Filter_0(src, index);
     end
     else
     begin
       case nAll of
         true:begin
-          num:= GetAllNumberStr(src);
-          try
-            num_i:= strtoint(num);
-          except
-            num_i:= 0;
-          end;
-          if pos('[C]', mskText) > 0 then
-          begin
-            res:= StringReplace(res, '[C]', AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
-          end;
-          if pos('[NAME]', res) > 0 then
-          begin
-            res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
-            res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
-          end;
-          if pos('[RANDOM]', res) > 0 then
-          begin
-            Randomize;
-            res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
-          end;
+          res:= Filter_1(src, index);
         end
         else
         begin
-          num:= GetNumberStr(src, sedStartNum.Value);
-          try
-            num_i:= strtoint(num);
-          except
-            num_i:= 0;
-          end;
-          if pos('[C]', mskText) > 0 then
-          begin
-            res:= StringReplace(res, '[C]', AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
-          end;
-          if pos('[NAME]', res) > 0 then
-          begin
-            res:= StringReplace(res, '[NAME]', DelSomeStr(src,ExtractFileExt(src)), [rfReplaceAll]);
-            res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
-          end;
-          if pos('[RANDOM]', res) > 0 then
-          begin
-            Randomize;
-            res:= StringReplace(res, '[RANDOM]', inttostr(Random(9999999)), [rfReplaceAll]);
-          end;
+          res:= Filter_2(src, index);
         end;
       end;
     end;
   end;
-  res:= res + ExtractFileExt(src);
   Result:= res;
 end;
 
 // Изменение списка включенных расширений (обновим список)
-
 procedure TfmMain.edExtsChange(Sender: TObject);
 begin
   mskExts:= edExts.Text;
@@ -294,7 +240,6 @@ begin
 end;
 
 // Изменение маски (обновление списка)
-
 procedure TfmMain.edMaskChange(Sender: TObject);
 begin
   mskText:= edMask.Text;
@@ -302,22 +247,152 @@ begin
 end;
 
 // Блокируем ввод некоректных символов в названии
-
 procedure TfmMain.edMaskKeyPress(Sender: TObject; var Key: Char);
 begin
   if Key in ['\', '/', ':', '*', '?', '"', '<', '>', '|'] then
     Key:= #0;
 end;
 
-// При создании проводим инициализацию необходимых переменных
+// Простой фильтр
+function TfmMain.Filter_0(const src: string; const index: integer): string;
+var
+  res, fSrc: string;
+  isDir: Boolean;
+begin
+  isDir:= false;
+  res:= mskText;
+  fSrc:= src;
+  if (fSrc[1] = '[') and (fSrc[length(fSrc)] = ']') then
+  begin
+    Delete(fSrc, 1, 1);
+    Delete(fSrc, length(fSrc), 1);
+    isDir:= true;
+  end;
+  if pos('[C]', mskText) > 0 then
+  begin
+    res:= StringReplace(res, '[C]', AddZeros(index + 1, mskZeroCnt), [rfReplaceAll]);
+  end;
+  if pos('[N]', res) > 0 then
+  begin
+    if not isDir then
+      res:= StringReplace(res, '[N]', DelSomeStr(fSrc,ExtractFileExt(fSrc)), [rfReplaceAll])
+    else
+      res:= StringReplace(res, '[N]', fSrc, [rfReplaceAll]);
+  end;
+  if pos('[R]', res) > 0 then
+  begin
+    Randomize;
+    res:= StringReplace(res, '[R]', inttostr(Random(9999999)), [rfReplaceAll]);
+  end;
+  if not isDir then
+    res:= res + ExtractFileExt(src);
+  Result:= res;
+end;
 
+// Нумерованный фильтр для всех чисел в названии
+function TfmMain.Filter_1(const src: string; const index: integer): string;
+var
+  res, num, fSrc: string;
+  num_i: integer;
+  isDir: Boolean;
+begin
+  isDir:= false;
+  res:= mskText;
+  num:= GetAllNumberStr(src);
+  try
+    num_i:= strtoint(num);
+  except
+    num_i:= 0;
+  end;
+  fSrc:= src;
+  if (fSrc[1] = '[') and (fSrc[length(fSrc)] = ']') then
+  begin
+    Delete(fSrc, 1, 1);
+    Delete(fSrc, length(fSrc), 1);
+    isDir:= true;
+  end;
+  if pos('[C]', mskText) > 0 then
+  begin
+    res:= StringReplace(res, '[C]', AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+  end;
+  if pos('[N]', res) > 0 then
+  begin
+    if not isDir then
+    begin
+      res:= StringReplace(res, '[N]', DelSomeStr(fSrc,ExtractFileExt(fSrc)), [rfReplaceAll]);
+      res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+    end
+    else
+    begin
+      res:= StringReplace(res, '[N]', fSrc, [rfReplaceAll]);
+      res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+    end;
+  end;
+  if pos('[R]', res) > 0 then
+  begin
+    Randomize;
+    res:= StringReplace(res, '[R]', inttostr(Random(9999999)), [rfReplaceAll]);
+  end;
+  if not isDir then
+    res:= res + ExtractFileExt(src);
+  Result:= res;
+end;
+
+// Нумерованный фильтр по позиции
+function TfmMain.Filter_2(const src: string; const index: integer): string;
+var
+  res, num, fSrc: string;
+  num_i: integer;
+  isDir: Boolean;
+begin
+  res:= mskText;
+  num:= GetNumberStr(src, sedStartNum.Value);
+  try
+    num_i:= strtoint(num);
+  except
+    num_i:= 0;
+  end;
+  fSrc:= src;
+  if (fSrc[1] = '[') and (fSrc[length(fSrc)] = ']') then
+  begin
+    Delete(fSrc, 1, 1);
+    Delete(fSrc, length(fSrc), 1);
+    isDir:= true;
+  end;
+  if pos('[C]', mskText) > 0 then
+  begin
+    res:= StringReplace(res, '[C]', AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+  end;
+  if pos('[N]', res) > 0 then
+  begin
+    if not isDir then
+    begin
+      res:= StringReplace(res, '[N]', DelSomeStr(fSrc,ExtractFileExt(fSrc)), [rfReplaceAll]);
+      res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+    end
+    else
+    begin
+      res:= StringReplace(res, '[N]', fSrc, [rfReplaceAll]);
+      res:= StringReplace(res, num, AddZeros(num_i, mskZeroCnt), [rfReplaceAll]);
+    end;
+  end;
+  if pos('[R]', res) > 0 then
+  begin
+    Randomize;
+    res:= StringReplace(res, '[R]', inttostr(Random(9999999)), [rfReplaceAll]);
+  end;
+  if not isDir then
+    res:= res + ExtractFileExt(src);
+  Result:= res;
+end;
+
+// При создании проводим инициализацию необходимых переменных
 procedure TfmMain.FormCreate(Sender: TObject);
 begin
   Init;
 end;
 
 // Инициализация необходимых переменных
-
 procedure TfmMain.Init;
 begin
   edMask.OnChange(self);
@@ -328,14 +403,12 @@ begin
 end;
 
 // При клике обновим список
-
 procedure TfmMain.lbFileClick(Sender: TObject);
 begin
   ShowSelected;
 end;
 
 // При Ctrl+A выбираем все файлы и обновляем список
-
 procedure TfmMain.lbFileKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
@@ -345,7 +418,6 @@ begin
 end;
 
 // Размножение строки
-
 function TfmMain.MulStr(Input: string; Rep: integer): string;
 var
   i: integer;
@@ -354,22 +426,54 @@ begin
     result := result + Input;
 end;
 
-procedure TfmMain.Rename;
+// Процедура переименования
+procedure TfmMain.RenameList;
 var
-  cnt, i: integer;
+  i, n: integer;
+  fName, nfName: TFileName;
 begin
-  cnt:= lbResult.Count;
-  for i := 0 to cnt - 1 do
-  begin
-    if lbFile.Selected[i] then
+  n:= 0;
+  Screen.Cursor:= crHourGlass;
+  stsBar.Panels[0].Text := 'Начало обработки выделенных обьектов...';
+  try
+    for i := 0 to lbFile.Count - 1 do
     begin
-      ShowMessage(lbDir.Directory + '\' + lbFile.Items.Strings[i]);
+      if lbFile.Selected[i] then
+      begin
+        if (lbFile.Items.Strings[i][1] = '[') and (lbFile.Items.Strings[i][length(lbFile.Items.Strings[i])] = ']') then
+        begin
+          fName:= lbFile.Items.Strings[i];
+          Delete(fName, 1, 1);
+          Delete(fName, length(fName), 1);
+          fName:= lbDir.Directory + '\' + fName;
+        end
+        else
+        begin
+          fName:= lbDir.Directory + '\' + lbFile.Items.Strings[i];
+        end;
+        nfName:= lbDir.Directory + '\' + lbResult.Items.Strings[n];
+        inc(n);
+        if FileExists(fName) or DirectoryExists(fName) then
+        begin
+          if not RenameFile(fName, nfName) then
+          begin
+            ShowMessage('Не удалось переименовать файл или папку ''' + fName + '''');
+          end;
+        end
+        else
+        begin
+          Exit;
+          ShowMessage('Файла или папки ''' + fName + ''' не существует!');
+        end;
+      end;
     end;
+  finally
+    Screen.Cursor:= crDefault;
+    stsBar.Panels[0].Text := 'Успешно завершено';
   end;
 end;
 
 // При изменении типа нумерации обновим переменные
-
 procedure TfmMain.rgRenameTypeClick(Sender: TObject);
 begin
   rType:= (rgRenameType.ItemIndex = 0);
@@ -377,7 +481,6 @@ begin
 end;
 
 // Отображение примененного фильтра
-
 procedure TfmMain.ShowSelected;
 var
   I, n: Integer;
@@ -404,7 +507,7 @@ begin
         lbResult.Items.Add(DoMask(lbFile.Items.Strings[I], n));
         inc(n);
       end;
-      if (cmbExts.Items.IndexOf(ExtractFileExt(lbFile.Items.Strings[I])) >= 0) or (pos(ExtractFileExt(lbFile.Items.Strings[I]), mskExts) > 0) then
+      if (cmbExts.Items.IndexOf(ExtractFileExt(lbFile.Items.Strings[I])) >= 0) or (pos(ExtractFileExt(lbFile.Items.Strings[I]), mskExts) > 0) or (lbFile.Items.Strings[I][length(lbFile.Items.Strings[I])] = ']') then
         Continue;
       cmbExts.Items.Add(ExtractFileExt(lbFile.Items.Strings[I]));
     end;
@@ -420,7 +523,6 @@ begin
 end;
 
 // Обновление интерфейса при изменениии типа нумерации
-
 procedure TfmMain.UpdateType;
 begin
   case rType of
@@ -438,7 +540,6 @@ begin
 end;
 
 // Изменение количества ведущих нулей
-
 procedure TfmMain.sedZeroCntChange(Sender: TObject);
 begin
   mskZeroCnt:= sedZeroCnt.Value;
