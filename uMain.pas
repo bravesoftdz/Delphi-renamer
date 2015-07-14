@@ -470,6 +470,7 @@ begin
   finally
     Screen.Cursor:= crDefault;
     stsBar.Panels[0].Text := 'Успешно завершено';
+    lbFile.Update;
   end;
 end;
 
